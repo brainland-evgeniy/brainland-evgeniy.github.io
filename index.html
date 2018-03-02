@@ -1,0 +1,314 @@
+<html>
+	<head>
+		<title>Brain Land arms</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="user-scalable=no, initial-scale=1">
+		<style>
+			body { margin: 0; }
+			canvas { width: 100%; height: 100% }
+		</style>
+	</head>
+	<body>
+
+		<script src="js/three.js"></script>
+		<script src="js/Detector.js"></script>
+
+		<script>
+			if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
+
+
+            // ============================================================
+			// vars
+			var camera_orientation_coef = 3;
+			var camera_smooth_on_mouse_move = .05;
+			var camera_position_z = 26;
+
+			var texture_ext = '.jpg';
+			var reflection_cube_texture_path = "textures/cube/Park2/";
+			// var env_texture_path = "textures/cube/SwedishRoyalCastle/";
+			// var env_texture_path = reflection_cube_texture_path;
+
+
+			var camera, scene, renderer, dirLight, dirLightHeper, hemiLight, hemiLightHelper;
+
+
+
+			
+            // ============================================================
+			// ====== loaders
+			var fontLoader = new THREE.FontLoader();
+			var objectLoader = new THREE.ObjectLoader();
+
+
+
+
+            // ============================================================
+			// ====== camera on mousemove
+			var mouseX = 0;
+			var mouseY = 0;
+			var windowHalfX = window.innerWidth / 2;
+			var windowHalfY = window.innerHeight / 2;
+			window.addEventListener( 'resize', onWindowResize, false );
+			document.addEventListener( 'mousemove', onDocumentMouseMove, false );
+			document.addEventListener( 'mouseout', onDocumentMouseOut, false );
+
+			function onWindowResize() {
+				windowHalfX = window.innerWidth / 2;
+				windowHalfY = window.innerHeight / 2;
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+				renderer.setSize( window.innerWidth, window.innerHeight );
+			}
+
+			function onDocumentMouseMove(event) {
+				mouseX = ( event.clientX - windowHalfX ) / 100;
+				mouseY = ( event.clientY - windowHalfY ) / 100;
+			}
+
+			function onDocumentMouseOut(event) {
+				mouseX = 0;
+				mouseY = 2;
+			}
+
+			if (window.DeviceOrientationEvent) {
+				window.addEventListener("deviceorientation", function(event) {
+					var z = event.alpha;
+					var x = event.beta;
+					var y = event.gamma;
+					switch(window.orientation) {
+						case 0:
+							mouseX = y / camera_orientation_coef;
+							mouseY = x / camera_orientation_coef;
+							break
+						case 90:
+							mouseX = x / camera_orientation_coef;
+							mouseY = -y / camera_orientation_coef;
+							break
+						case 180:
+							mouseX = -y / camera_orientation_coef;
+							mouseY = -x / camera_orientation_coef;
+							break
+						case -90:
+							mouseX = -x / camera_orientation_coef;
+							mouseY = y / camera_orientation_coef;
+							break
+					}
+				}, false);
+			}
+
+
+
+            // ============================================================
+			// ====== init
+			// ====== camera
+			camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 1, 10000 );
+			camera.position.z = camera_position_z;
+			
+
+			// ====== scene
+			scene = new THREE.Scene();
+			if ( typeof env_texture_path !== 'undefined' ) {
+				scene.background = new THREE.CubeTextureLoader()
+					.setPath( env_texture_path )
+					.load( [ 'px.jpg', 'nx.jpg', 'py.jpg', 'ny.jpg', 'pz.jpg', 'nz.jpg' ] );
+			} else {
+				scene.background = new THREE.Color( 0xf0f0f0 );
+			}
+			// scene.fog = new THREE.Fog( scene.background, 1, 5000 );
+			// scene.fog = new THREE.FogExp2( 0xcccccc, 0.002 );
+
+
+			// ====== renderer
+			renderer = new THREE.WebGLRenderer({'antialias':true});
+            // renderer.shadowMapEnabled   = true;
+            // renderer.shadowMapSoft      = true;
+			renderer.setSize( window.innerWidth, window.innerHeight );
+			renderer.localClippingEnabled = true;
+
+
+			document.body.appendChild( renderer.domElement );
+
+
+			// ====== LIGHTS
+			hemiLight = new THREE.HemisphereLight( 0xffffff, 0xffffff, 0.6 );
+			hemiLight.color.setHSL( 0.6, 1, 0.6 );
+			hemiLight.groundColor.setHSL( 0.095, 1, 0.75 );
+			hemiLight.position.set( 0, 50, 0 );
+			scene.add( hemiLight );
+			// hemiLightHelper = new THREE.HemisphereLightHelper( hemiLight, 10 );
+			// scene.add( hemiLightHelper );
+			//
+			dirLight = new THREE.DirectionalLight( 0xffffff, 1 );
+			dirLight.color.setHSL( 0.1, 1, 0.95 );
+			dirLight.position.set( -0.3, 0.5, 1 );
+			dirLight.position.multiplyScalar( 30 );
+			scene.add( dirLight );
+			dirLight.castShadow = true;
+			dirLight.shadow.mapSize.width = 2048;
+			dirLight.shadow.mapSize.height = 2048;
+			var d = 50;
+			dirLight.shadow.camera.left = -d;
+			dirLight.shadow.camera.right = d;
+			dirLight.shadow.camera.top = d;
+			dirLight.shadow.camera.bottom = -d;
+			dirLight.shadow.camera.far = 3500;
+			dirLight.shadow.bias = -0.0001;
+			dirLightHeper = new THREE.DirectionalLightHelper( dirLight, 10 ) 
+			// scene.add( dirLightHeper );
+
+
+			// ====== reflectionCube
+			var path = reflection_cube_texture_path;
+            var format = texture_ext;
+            var urls = [
+                    'px' + format, 'nx' + format,
+                    'py' + format, 'ny' + format,
+                    'pz' + format, 'nz' + format
+                ];
+			var reflectionCube = new THREE.CubeTextureLoader()
+				.setPath( reflection_cube_texture_path )
+				.load( urls );
+
+
+
+
+            // ============================================================
+			// ====== JSON model geometry load
+			// var loader = new THREE.JSONLoader();
+			// loader.load( 'buntitled.json', function ( geometry ) {
+			// 	var mesh = new THREE.Mesh( geometry, new THREE.MeshBasicMaterial() );
+			// 	scene.add( mesh );
+			// }); 
+
+
+
+            // ============================================================
+			// ====== JSON scene load
+			objectLoader.load("models/bl_arms_scene.json", function ( obj ) {
+				var material = new THREE.MeshStandardMaterial( { color: 0xFFE0B2 } );
+				material.roughness = .7;
+				material.metalness = 1;
+
+				obj.children[0].material = material;
+				// obj.children[0].material.envMap = reflectionCube;
+				// obj.children[0].material.reflectivity = 0.6;
+				scene.add( obj );
+			} );
+
+
+
+            // ============================================================
+			// ====== Font
+			var text, trainer_text_y_min, trainer_text_y_max;
+			var trainer_text_pos_y = -7;
+			var trainer_text_pos_z = 5;
+
+			trainers_names = [
+				'Мемория',
+				'Нумера',
+				'Лектио',
+				'Скрибо',
+				'Оратио',
+				'Компаратио',
+				'Классис',
+				'Синтезис',
+				'Джэнэралис',
+				'Конкретис',
+				'Атэнтио',
+				'Эдукатус',
+				'Ритмус',
+				'Анализис',
+				'Мнемоника',
+				'Элокиум',
+				'Индукцио',
+				'Дедукцио',
+				'Логика',
+				'Шифрус',
+				'Мемория+',
+			];
+
+			var clipPlanes = [
+				new THREE.Plane( new THREE.Vector3(0, -1, 0), 0)
+			];
+
+
+			fontLoader.load( 'fonts/Exo 2 Light_Regular.json', onTrainerNameTextFontLoad );
+
+
+			function onTrainerNameTextFontLoad(g_font) {
+	
+				var geometry = new THREE.TextGeometry( 
+					trainers_names[Math.floor(Math.random()*trainers_names.length)],
+					{
+						font: g_font,
+						size: 4,
+						height: 0.3,
+						curveSegments: 32,
+					} 
+				);
+				geometry.center();
+				geometry.computeBoundingBox();
+				trainer_text_y_min = geometry.boundingBox.min.y;
+				trainer_text_y_max = geometry.boundingBox.max.y;
+
+				clipPlanes[0].constant = trainer_text_pos_y + trainer_text_y_min - .1;
+
+
+				var material_text_back = new THREE.MeshStandardMaterial( { 
+					color: 0xEDE7F6,
+					transparent: true,
+					opacity: .5
+				});
+				text_back = new THREE.Mesh( geometry, material_text_back );
+				text_back.position.z = trainer_text_pos_z;
+				text_back.position.y += trainer_text_pos_y;
+				scene.add( text_back );
+
+
+				var material_text_front = new THREE.MeshStandardMaterial( { 
+					color: 0x9575CD ,
+					  side: THREE.DoubleSide,
+					  clippingPlanes: clipPlanes,
+					  clipIntersection: true
+				});
+				text_front = new THREE.Mesh( geometry, material_text_front );
+				text_front.position.z = trainer_text_pos_z;
+				text_front.position.y += trainer_text_pos_y;
+				scene.add( text_front );
+			} 
+
+
+
+            // ============================================================
+			// ====== cube
+			// var geometry = new THREE.BoxGeometry( 1, 1, 1 );
+			// var material = new THREE.MeshStandardMaterial( { color: 0x00ff00 } );
+			// var cube = new THREE.Mesh( geometry, material );
+			// scene.add( cube );
+
+
+
+			// var clock = new THREE.Clock();
+			function render() {
+
+				if (clipPlanes[0].constant < trainer_text_pos_y + trainer_text_y_max) {
+					// console.log(clipPlanes[0].constant);
+					clipPlanes[0].constant +=  .01;
+				}
+
+				camera.position.x += ( mouseX - camera.position.x ) * camera_smooth_on_mouse_move;
+				camera.position.y += ( - mouseY - camera.position.y ) * camera_smooth_on_mouse_move;
+				camera.lookAt( scene.position );
+				renderer.render( scene, camera );
+			}
+
+			function animate() {
+				requestAnimationFrame( animate );
+				render();
+			}
+
+			animate();
+
+		</script>
+	</body>
+</html>

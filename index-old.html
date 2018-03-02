@@ -1,0 +1,344 @@
+<html>
+	<head>
+		<title>Brain Land arms</title>
+		<meta name="viewport" content="user-scalable=no, initial-scale=1">
+		<style>
+			body { margin: 0; }
+			canvas { width: 100%; height: 100% }
+		</style>
+	</head>
+	<body>
+
+		<script src="js/three.js"></script>
+		<script src="js/Detector.js"></script>
+
+		<!-- <script src="js/loaders/ColladaLoader.js"></script> -->
+		<!-- <script src="js/loaders/SVGLoader.js"></script> -->
+		<!-- <script src="js/renderers/SVGRenderer.js"></script> -->
+		<!-- <script src="js/renderers/Projector.js"></script> -->
+
+		<script>
+			if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
+
+
+            // ============================================================
+			// vars
+			var camera_orientation_coef = 3;
+			var camera_smooth_on_mouse_move = .05;
+			var camera_position_z = 20;
+
+			var texture_ext = '.jpg';
+			// var reflection_cube_texture_path = "textures/cube/SwedishRoyalCastle/";
+			var reflection_cube_texture_path = "textures/cube/Park2/";
+			// var env_texture_path = "textures/cube/SwedishRoyalCastle/";
+			// var env_texture_path = reflection_cube_texture_path;
+
+
+			var camera, scene, renderer, dirLight, dirLightHeper, hemiLight, hemiLightHelper;
+
+
+
+            // ============================================================
+			// ====== camera on mousemove
+			var mouseX = 0;
+			var mouseY = 0;
+			var windowHalfX = window.innerWidth / 2;
+			var windowHalfY = window.innerHeight / 2;
+			window.addEventListener( 'resize', onWindowResize, false );
+			document.addEventListener( 'mousemove', onDocumentMouseMove, false );
+			document.addEventListener( 'mouseout', onDocumentMouseOut, false );
+
+			function onWindowResize() {
+				windowHalfX = window.innerWidth / 2;
+				windowHalfY = window.innerHeight / 2;
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+				renderer.setSize( window.innerWidth, window.innerHeight );
+			}
+
+			function onDocumentMouseMove(event) {
+				mouseX = ( event.clientX - windowHalfX ) / 100;
+				mouseY = ( event.clientY - windowHalfY ) / 100;
+			}
+
+			function onDocumentMouseOut(event) {
+				mouseX = 0;
+				mouseY = 2;
+			}
+
+			if (window.DeviceOrientationEvent) {
+				window.addEventListener("deviceorientation", function(event) {
+					var z = event.alpha;
+					var x = event.beta;
+					var y = event.gamma;
+					switch(window.orientation) {
+						case 0:
+							mouseX = y / camera_orientation_coef;
+							mouseY = x / camera_orientation_coef;
+							break
+						case 90:
+							mouseX = x / camera_orientation_coef;
+							mouseY = -y / camera_orientation_coef;
+							break
+						case 180:
+							mouseX = -y / camera_orientation_coef;
+							mouseY = -x / camera_orientation_coef;
+							break
+						case -90:
+							mouseX = -x / camera_orientation_coef;
+							mouseY = y / camera_orientation_coef;
+							break
+					}
+				}, false);
+			}
+
+
+
+            // ============================================================
+			// ====== init
+			// ====== camera
+			camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 1, 10000 );
+			camera.position.z = camera_position_z;
+			
+
+			// ====== scene
+			scene = new THREE.Scene();
+			if ( typeof env_texture_path !== 'undefined' ) {
+				scene.background = new THREE.CubeTextureLoader()
+					.setPath( env_texture_path )
+					.load( [ 'px.jpg', 'nx.jpg', 'py.jpg', 'ny.jpg', 'pz.jpg', 'nz.jpg' ] );
+			} else {
+				scene.background = new THREE.Color( 0xf0f0f0 );
+			}
+			// scene.fog = new THREE.Fog( scene.background, 1, 5000 );
+			// scene.fog = new THREE.FogExp2( 0xcccccc, 0.002 );
+
+
+
+            // ============================================================
+			// ====== renderer
+			renderer = new THREE.WebGLRenderer({'antialias':true});
+                // renderer.shadowMapEnabled   = true;
+                // renderer.shadowMapSoft      = true;
+			renderer.setSize( window.innerWidth, window.innerHeight );
+			document.body.appendChild( renderer.domElement );
+
+			// renderer = new THREE.SVGRenderer();
+			// renderer.setSize( window.innerWidth, window.innerHeight );
+			// renderer.setQuality( 'low' );
+			// document.body.appendChild( renderer.domElement );
+
+
+
+
+
+			// ============================================================
+			// ====== LIGHTS
+			hemiLight = new THREE.HemisphereLight( 0xffffff, 0xffffff, 0.6 );
+			hemiLight.color.setHSL( 0.6, 1, 0.6 );
+			hemiLight.groundColor.setHSL( 0.095, 1, 0.75 );
+			hemiLight.position.set( 0, 50, 0 );
+			scene.add( hemiLight );
+			// hemiLightHelper = new THREE.HemisphereLightHelper( hemiLight, 10 );
+			// scene.add( hemiLightHelper );
+			//
+			dirLight = new THREE.DirectionalLight( 0xffffff, 1 );
+			dirLight.color.setHSL( 0.1, 1, 0.95 );
+			dirLight.position.set( -1, 1.75, 1 );
+			dirLight.position.multiplyScalar( 30 );
+			scene.add( dirLight );
+			dirLight.castShadow = true;
+			dirLight.shadow.mapSize.width = 2048;
+			dirLight.shadow.mapSize.height = 2048;
+			var d = 50;
+			dirLight.shadow.camera.left = -d;
+			dirLight.shadow.camera.right = d;
+			dirLight.shadow.camera.top = d;
+			dirLight.shadow.camera.bottom = -d;
+			dirLight.shadow.camera.far = 3500;
+			dirLight.shadow.bias = -0.0001;
+			// dirLightHeper = new THREE.DirectionalLightHelper( dirLight, 10 ) 
+			// scene.add( dirLightHeper );
+
+
+
+
+
+            // ============================================================
+			// ====== reflectionCube
+			var path = reflection_cube_texture_path;
+            var format = texture_ext;
+            var urls = [
+                    'px' + format, 'nx' + format,
+                    'py' + format, 'ny' + format,
+                    'pz' + format, 'nz' + format
+                ];
+			var reflectionCube = new THREE.CubeTextureLoader()
+				.setPath( reflection_cube_texture_path )
+				.load( urls );
+            // reflectionCube.format = THREE.RGBFormat;
+
+
+
+
+            // ============================================================
+			// ====== JSON model geometry load
+			// var loader = new THREE.JSONLoader();
+			// loader.load( 'buntitled.json', function ( geometry ) {
+			// 	var mesh = new THREE.Mesh( geometry, new THREE.MeshBasicMaterial() );
+			// 	scene.add( mesh );
+			// }); 
+
+
+
+            // ============================================================
+			// ====== JSON scene load
+			var objectLoader = new THREE.ObjectLoader();
+			objectLoader.load("models/bl_arms_scene.json", function ( obj ) {
+				obj.children[0].material.envMap = reflectionCube;
+				obj.children[0].material.reflectivity = 0.6;
+				scene.add( obj );
+			} );
+
+
+
+            // ============================================================
+			// ====== cube
+			// var geometry = new THREE.BoxGeometry( 1, 1, 1 );
+			// var material = new THREE.MeshStandardMaterial( { color: 0x00ff00 } );
+			// var cube = new THREE.Mesh( geometry, material );
+			// scene.add( cube );
+
+
+
+
+			// environment map
+			// var path = "textures/cube/SwedishRoyalCastle/";
+			// var format = '.jpg';
+			// var urls = [
+			// 	path + 'px' + format, path + 'nx' + format,
+			// 	path + 'py' + format, path + 'ny' + format,
+			// 	path + 'pz' + format, path + 'nz' + format
+			// ];
+			// var cubeTextureLoader = new THREE.CubeTextureLoader();
+			// var reflectionCube = cubeTextureLoader.load( urls );
+			// reflectionCube.format = THREE.RGBFormat;
+			// var refractionCube = cubeTextureLoader.load( urls );
+			// reflectionCube.format = THREE.RGBFormat;
+			// refractionCube.mapping = THREE.CubeRefractionMapping;
+
+
+
+
+
+
+			// ============================================================
+			// ====== svgObject
+			// var svgManager = new THREE.SVGLoader();
+			// var url = 'https://vignette.wikia.nocookie.net/althistory/images/8/8c/Facebook_like_thumb.svg';
+
+			// function svg_loading_done_callback(doc) {
+			// 	console.log("add svgObject")
+			// 	var svgObject = new THREE.SVGObject(doc);
+			// 	scene.add(svgObject);
+			// 	// renderer.render(scene, camera);
+			// 	// init(new THREE.SVGObject(doc));
+			// 	// animate();		
+			// };
+
+			// svgManager.load( url, 
+			// 	svg_loading_done_callback, 
+			// 	function(){console.log("Loading SVG...");},
+			// 	function(){console.log("Error loading SVG!");}
+			// );
+
+
+
+
+
+			// // GROUND
+			// var groundGeo = new THREE.PlaneBufferGeometry( 10000, 10000 );
+			// var groundMat = new THREE.MeshPhongMaterial( { color: 0xffffff, specular: 0x050505 } );
+			// groundMat.color.setHSL( 0.095, 1, 0.75 );
+			// var ground = new THREE.Mesh( groundGeo, groundMat );
+			// ground.rotation.x = -Math.PI/2;
+			// ground.position.y = -33;
+			// scene.add( ground );
+			// ground.receiveShadow = true;
+
+
+
+
+			// // SKYDOME
+			// var vertexShader = document.getElementById( 'vertexShader' ).textContent;
+			// var fragmentShader = document.getElementById( 'fragmentShader' ).textContent;
+			// var uniforms = {
+			// 	topColor:    { value: new THREE.Color( 0x0077ff ) },
+			// 	bottomColor: { value: new THREE.Color( 0xffffff ) },
+			// 	offset:      { value: 33 },
+			// 	exponent:    { value: 0.6 }
+			// };
+			// uniforms.topColor.value.copy( hemiLight.color );
+			// scene.fog.color.copy( uniforms.bottomColor.value );
+			// var skyGeo = new THREE.SphereGeometry( 4000, 32, 15 );
+			// var skyMat = new THREE.ShaderMaterial( { vertexShader: vertexShader, fragmentShader: fragmentShader, uniforms: uniforms, side: THREE.BackSide } );
+			// var sky = new THREE.Mesh( skyGeo, skyMat );
+			// scene.add( sky );
+
+
+
+
+
+			// var light = new THREE.DirectionalLight( 0xffffff );
+			// light.position.set( 1, 1, 1 );
+			// scene.add( light );
+			// var light = new THREE.DirectionalLight( 0x002288 );
+			// light.position.set( -1, -1, -1 );
+			// scene.add( light );
+			// var light = new THREE.AmbientLight( 0x222222 );
+			// scene.add( light );
+
+
+
+
+			// document.addEventListener("keydown", keyDownTextField, false);
+			// function keyDownTextField(e) {
+			// 	switch(e.keyCode) {
+			// 		// w
+			// 		case 87:
+			// 			// cube.position.z -= 0.1;
+			// 			cube.rotation.x -= 0.1;
+			// 			break
+			// 		// a
+			// 		case 65:
+			// 			cube.rotation.y -= 0.1;
+			// 			break
+			// 		// s
+			// 		case 83:
+			// 			cube.rotation.x += 0.1;
+			// 			break
+			// 		// d
+			// 		case 68:
+			// 			cube.rotation.y += 0.1;
+			// 			break
+			// 	}
+			// 	renderer.render(scene, camera);
+			// }
+
+			function render() {
+				camera.position.x += ( mouseX - camera.position.x ) * camera_smooth_on_mouse_move;
+				camera.position.y += ( - mouseY - camera.position.y ) * camera_smooth_on_mouse_move;
+				camera.lookAt( scene.position );
+				renderer.render( scene, camera );
+			}
+
+			function animate() {
+				requestAnimationFrame( animate );
+				render();
+			}
+
+			animate();
+
+		</script>
+	</body>
+</html>
