@@ -200,7 +200,7 @@
             // ============================================================
 			// ====== Font
 			var text, trainer_text_y_min, trainer_text_y_max;
-			var trainer_text_pos_y = -7;
+			var trainer_text_pos_y = -8;
 			var trainer_text_pos_z = 5;
 
 			trainers_names = [
@@ -236,7 +236,6 @@
 
 
 			function onTrainerNameTextFontLoad(g_font) {
-	
 				var geometry = new THREE.TextGeometry( 
 					trainers_names[Math.floor(Math.random()*trainers_names.length)],
 					{
@@ -266,17 +265,56 @@
 
 
 				var material_text_front = new THREE.MeshStandardMaterial( { 
-					color: 0x9575CD ,
-					  side: THREE.DoubleSide,
-					  clippingPlanes: clipPlanes,
-					  clipIntersection: true
+					color: 0x9575CD,
+					side: THREE.DoubleSide,
+					clippingPlanes: clipPlanes,
+					clipIntersection: true
 				});
 				text_front = new THREE.Mesh( geometry, material_text_front );
 				text_front.position.z = trainer_text_pos_z;
 				text_front.position.y += trainer_text_pos_y;
 				scene.add( text_front );
+
+				setTimeout(function() { 
+					updateProgress(.2);
+				}, 1000);
+				setTimeout(function() { 
+					updateProgress(.3);
+				}, 2000);
+				setTimeout(function() { 
+					updateProgress(.6);
+				}, 2500);
+				setTimeout(function() { 
+					updateProgress(.8);
+				}, 5000);
+				setTimeout(function() { 
+					updateProgress(1);
+				}, 6000);
+
 			} 
 
+			var update_progress_timer;
+			function updateProgress(proc) {
+				clearTimeout(update_progress_timer);
+
+				var min = trainer_text_pos_y + trainer_text_y_min - .1;
+				var max = trainer_text_pos_y + trainer_text_y_max;
+				var range = max - min;
+				var new_pos = min + range*proc;
+				var cur_pos = clipPlanes[0].constant;
+
+				function loop() {
+					var mext_pos = (new_pos - clipPlanes[0].constant) * 1 / 4;
+					clipPlanes[0].constant += mext_pos;
+					var dist_to_end = Math.abs( new_pos - clipPlanes[0].constant );
+					if (dist_to_end < .1) {
+						clipPlanes[0].constant = new_pos;
+					} else {
+						update_progress_timer = setTimeout( loop, 1000/60 );
+					}
+				}
+				loop();
+			}
 
 
             // ============================================================
@@ -288,13 +326,14 @@
 
 
 
+
 			// var clock = new THREE.Clock();
 			function render() {
 
-				if (clipPlanes[0].constant < trainer_text_pos_y + trainer_text_y_max) {
-					// console.log(clipPlanes[0].constant);
-					clipPlanes[0].constant +=  .01;
-				}
+				// if (clipPlanes[0].constant < trainer_text_pos_y + trainer_text_y_max) {
+				// 	// console.log(clipPlanes[0].constant);
+				// 	clipPlanes[0].constant +=  .01;
+				// }
 
 				camera.position.x += ( mouseX - camera.position.x ) * camera_smooth_on_mouse_move;
 				camera.position.y += ( - mouseY - camera.position.y ) * camera_smooth_on_mouse_move;
