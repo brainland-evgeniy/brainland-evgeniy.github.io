@@ -14,6 +14,12 @@
 		<script src="js/Detector.js"></script>
 
 		<script>
+
+			Array.prototype.getRandom = function () {
+				return this[Math.floor(Math.random()*this.length)];
+			};
+
+
 			if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 
 
@@ -28,22 +34,17 @@
 			// var env_texture_path = "textures/cube/SwedishRoyalCastle/";
 			// var env_texture_path = reflection_cube_texture_path;
 
-
 			var camera, scene, renderer, dirLight, dirLightHeper, hemiLight, hemiLightHelper;
 
 
-
-			
             // ============================================================
 			// ====== loaders
 			var fontLoader = new THREE.FontLoader();
 			var objectLoader = new THREE.ObjectLoader();
 
 
-
-
             // ============================================================
-			// ====== camera on mousemove
+			// ====== camera's magic
 			var mouseX = 0;
 			var mouseY = 0;
 			var windowHalfX = window.innerWidth / 2;
@@ -97,7 +98,6 @@
 			}
 
 
-
             // ============================================================
 			// ====== init
 			// ====== camera
@@ -129,6 +129,7 @@
 			document.body.appendChild( renderer.domElement );
 
 
+            // ============================================================
 			// ====== LIGHTS
 			hemiLight = new THREE.HemisphereLight( 0xffffff, 0xffffff, 0.6 );
 			hemiLight.color.setHSL( 0.6, 1, 0.6 );
@@ -157,6 +158,8 @@
 			// scene.add( dirLightHeper );
 
 
+
+            // ============================================================
 			// ====== reflectionCube
 			var path = reflection_cube_texture_path;
             var format = texture_ext;
@@ -169,6 +172,22 @@
 				.setPath( reflection_cube_texture_path )
 				.load( urls );
 
+
+            // ============================================================
+			// ====== MATERIALS
+			// var material_wave = new THREE.ShaderMaterial({
+			// 	uniforms: {
+			// 		// texture: { value: material_arms },
+			// 		u_amplitude: { value: 1 },
+			// 		u_frequency: { value: .5 },
+			// 		u_time: { value: 1 },
+			// 		uniformsNeedUpdate: { value: true },
+			// 	},
+			// 	vertexShader: document.getElementById('planeVS').innerHTML,
+			// 	fragmentShader: document.getElementById('planeFS').innerHTML,
+			// 	// side: THREE.DoubleSide,
+			// 	wireframe: true
+			// });
 
 
 
@@ -183,27 +202,35 @@
 
 
             // ============================================================
-			// ====== JSON scene load
-			objectLoader.load("models/bl_arms_scene.json", function ( obj ) {
-				var material = new THREE.MeshStandardMaterial( { color: 0xFFE0B2 } );
-				material.roughness = .7;
-				material.metalness = 1;
+			// ====== add arms
+			// ====== JSON
+			var arms_model_scene_path = "models/bl_arms_scene.json";
 
-				obj.children[0].material = material;
+			var material_arms = new THREE.MeshStandardMaterial( { color: 0xFFE0B2 } );
+			material_arms.roughness = .7;
+			material_arms.metalness = 1;
+
+			objectLoader.load(arms_model_scene_path, onArmsModelSceneLoad );
+
+			function onArmsModelSceneLoad(obj) {
+				obj.children[0].material = material_arms;
 				// obj.children[0].material.envMap = reflectionCube;
 				// obj.children[0].material.reflectivity = 0.6;
 				scene.add( obj );
-			} );
-
+			}
 
 
             // ============================================================
-			// ====== Font
+			// ====== Texts
 			var text, trainer_text_y_min, trainer_text_y_max;
 			var trainer_text_pos_y = -8;
 			var trainer_text_pos_z = 5;
 
-			trainers_names = [
+			var trainer_text_font_path = 'fonts/Exo 2 Light_Regular.json';
+			var trainer_text_font_size = 4;
+			var trainer_text_font_height = 0;
+
+			var trainers_names = [
 				'Мемория',
 				'Нумера',
 				'Лектио',
@@ -226,24 +253,50 @@
 				'Шифрус',
 				'Мемория+',
 			];
-
-			var clipPlanes = [
-				new THREE.Plane( new THREE.Vector3(0, -1, 0), 0)
+			var trainers_names_colors = [
+				0xE57373,
+				0xF06292,
+				0xBA68C8,
+				0x9575CD,
+				0x64B5F6,
+				0x4DB6AC,
+				0x81C784,
+				0xA1887F,
+				0x90A4AE,
 			];
 
 
-			fontLoader.load( 'fonts/Exo 2 Light_Regular.json', onTrainerNameTextFontLoad );
+			// ====== materials
+			var trainers_names_color = trainers_names_colors.getRandom();
+			// console.log(trainers_names_color.toString(16));
+			var clipPlanes = [
+				new THREE.Plane( new THREE.Vector3(0, -1, 0), 0)
+			];
+			var material_text_front = new THREE.MeshStandardMaterial( { 
+				color: trainers_names_color,
+				side: THREE.DoubleSide,
+				clippingPlanes: clipPlanes,
+				clipIntersection: true
+			});
+			var material_text_back = new THREE.MeshStandardMaterial( { 
+				color: trainers_names_color,
+				transparent: true,
+				opacity: .3
+			});
 
 
-			function onTrainerNameTextFontLoad(g_font) {
-				var geometry = new THREE.TextGeometry( 
-					trainers_names[Math.floor(Math.random()*trainers_names.length)],
+			// ====== meshs
+			fontLoader.load( trainer_text_font_path, onTrainerNameTextFontLoad );
+
+			function onTrainerNameTextFontLoad(font) {
+				var geometry = new THREE.TextGeometry(
+					trainers_names.getRandom(),
 					{
-						font: g_font,
-						size: 4,
-						height: 0.3,
+						font: font,
+						size: trainer_text_font_size,
+						height: trainer_text_font_height,
 						curveSegments: 32,
-					} 
+					}
 				);
 				geometry.center();
 				geometry.computeBoundingBox();
@@ -252,46 +305,19 @@
 
 				clipPlanes[0].constant = trainer_text_pos_y + trainer_text_y_min - .1;
 
-
-				var material_text_back = new THREE.MeshStandardMaterial( { 
-					color: 0xEDE7F6,
-					transparent: true,
-					opacity: .5
-				});
 				text_back = new THREE.Mesh( geometry, material_text_back );
 				text_back.position.z = trainer_text_pos_z;
 				text_back.position.y += trainer_text_pos_y;
 				scene.add( text_back );
 
-
-				var material_text_front = new THREE.MeshStandardMaterial( { 
-					color: 0x9575CD,
-					side: THREE.DoubleSide,
-					clippingPlanes: clipPlanes,
-					clipIntersection: true
-				});
 				text_front = new THREE.Mesh( geometry, material_text_front );
 				text_front.position.z = trainer_text_pos_z;
 				text_front.position.y += trainer_text_pos_y;
 				scene.add( text_front );
 
-				setTimeout(function() { 
-					updateProgress(.2);
-				}, 1000);
-				setTimeout(function() { 
-					updateProgress(.3);
-				}, 2000);
-				setTimeout(function() { 
-					updateProgress(.6);
-				}, 2500);
-				setTimeout(function() { 
-					updateProgress(.8);
-				}, 5000);
-				setTimeout(function() { 
-					updateProgress(1);
-				}, 6000);
+				loadingEmulation();
+			}
 
-			} 
 
 			var update_progress_timer;
 			function updateProgress(proc) {
@@ -317,6 +343,21 @@
 			}
 
 
+			// ====== force emulation
+			function loadingEmulation() {
+				var stages = [
+					[.2,1],
+					[.3,2],
+					[.6,2.5],
+					[.8,5],
+					[1,6],
+				];
+				stages.forEach(function(e) {
+					setTimeout(function() {updateProgress(e[0]);}, e[1]*1000);
+				});
+			}
+
+
             // ============================================================
 			// ====== cube
 			// var geometry = new THREE.BoxGeometry( 1, 1, 1 );
@@ -326,13 +367,22 @@
 
 
 
-
 			// var clock = new THREE.Clock();
+			// var LAST_TIME = Date.now();
 			function render() {
 
 				// if (clipPlanes[0].constant < trainer_text_pos_y + trainer_text_y_max) {
 				// 	// console.log(clipPlanes[0].constant);
 				// 	clipPlanes[0].constant +=  .01;
+				// }
+
+				// var text_back = scene.getObjectByName( "text_back" );
+				// // console.log(text_back);
+				// var DELTA_TIME = Date.now() - LAST_TIME;
+				// LAST_TIME = Date.now();
+				// if (typeof(text_back) !== 'undefined') {
+				// 	// console.log(text_back.children[0].material.uniforms.u_time.value);
+				//  // text_back.children[0].material.uniforms.u_time.value += DELTA_TIME / 1000;
 				// }
 
 				camera.position.x += ( mouseX - camera.position.x ) * camera_smooth_on_mouse_move;
@@ -345,7 +395,6 @@
 				requestAnimationFrame( animate );
 				render();
 			}
-
 			animate();
 
 		</script>
