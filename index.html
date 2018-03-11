@@ -34,6 +34,12 @@
 			// var env_texture_path = "textures/cube/SwedishRoyalCastle/";
 			// var env_texture_path = reflection_cube_texture_path;
 
+			var loadable_resources = {
+				arms_model_scene: false,
+				trainers_names_font_back: false,
+				trainers_names_font_front: false,
+			}
+
 			var camera, scene, renderer, dirLight, dirLightHeper, hemiLight, hemiLightHelper;
 
 
@@ -204,6 +210,8 @@
             // ============================================================
 			// ====== add arms
 			// ====== JSON
+			// var arms_model_scene_mesh;
+
 			var arms_model_scene_path = "models/bl_arms_scene.json";
 
 			var material_arms = new THREE.MeshStandardMaterial( { color: 0xFFE0B2 } );
@@ -216,7 +224,11 @@
 				obj.children[0].material = material_arms;
 				// obj.children[0].material.envMap = reflectionCube;
 				// obj.children[0].material.reflectivity = 0.6;
-				scene.add( obj );
+				// arms_model_scene_mesh = obj;
+
+				loadable_resources.arms_model_scene = obj;
+				initScene();
+				// scene.add( obj );
 			}
 
 
@@ -308,14 +320,19 @@
 				text_back = new THREE.Mesh( geometry, material_text_back );
 				text_back.position.z = trainer_text_pos_z;
 				text_back.position.y += trainer_text_pos_y;
-				scene.add( text_back );
+				// scene.add( text_back );
 
 				text_front = new THREE.Mesh( geometry, material_text_front );
 				text_front.position.z = trainer_text_pos_z;
 				text_front.position.y += trainer_text_pos_y;
-				scene.add( text_front );
+				// scene.add( text_front );
 
-				loadingEmulation();
+
+				loadable_resources.trainers_names_font_back = text_back;
+				loadable_resources.trainers_names_font_front = text_front;
+				initScene();
+
+
 			}
 
 
@@ -365,6 +382,16 @@
 			// var cube = new THREE.Mesh( geometry, material );
 			// scene.add( cube );
 
+
+			function initScene() {
+				for (var index in loadable_resources) {
+					if (loadable_resources[index] === false) return false;
+				}
+				for (var index in loadable_resources) {
+					scene.add( loadable_resources[index] );
+				}
+				loadingEmulation();
+			}
 
 
 			// var clock = new THREE.Clock();
