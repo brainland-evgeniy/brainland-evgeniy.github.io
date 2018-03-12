@@ -215,6 +215,8 @@
 			var arms_model_scene_path = "models/bl_arms_scene.json";
 
 			var material_arms = new THREE.MeshStandardMaterial( { color: 0xFFE0B2 } );
+			material_arms.transparent  = true;
+			material_arms.opacity = 0;
 			material_arms.roughness = .7;
 			material_arms.metalness = 1;
 
@@ -327,12 +329,9 @@
 				text_front.position.y += trainer_text_pos_y;
 				// scene.add( text_front );
 
-
 				loadable_resources.trainers_names_font_back = text_back;
 				loadable_resources.trainers_names_font_front = text_front;
 				initScene();
-
-
 			}
 
 
@@ -382,6 +381,8 @@
 			// var cube = new THREE.Mesh( geometry, material );
 			// scene.add( cube );
 
+			var initedSceneTime;
+			var sceneFadeInDuration = 1;
 
 			function initScene() {
 				for (var index in loadable_resources) {
@@ -390,7 +391,18 @@
 				for (var index in loadable_resources) {
 					scene.add( loadable_resources[index] );
 				}
+				initedSceneTime = new THREE.Clock();
+				sceneFadeIn();
+
 				loadingEmulation();
+			}
+
+			function sceneFadeIn() {
+				var prc = initedSceneTime.getElapsedTime() / sceneFadeInDuration;
+				loadable_resources.arms_model_scene.children[0].material.opacity = prc;
+				if (initedSceneTime.getElapsedTime() <= sceneFadeInDuration) {
+					requestAnimationFrame( sceneFadeIn );
+				}
 			}
 
 
